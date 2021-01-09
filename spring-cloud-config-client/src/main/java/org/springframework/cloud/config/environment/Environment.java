@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,6 +34,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class Environment {
 
+	/**
+	 * "(_)" is uncommon in a git repo name, but "/" cannot be matched by Spring MVC.
+	 */
+	public static final String SLASH_PLACEHOLDER = "(_)";
+
 	private String name;
 
 	private String[] profiles = new String[0];
@@ -51,18 +56,16 @@ public class Environment {
 	}
 
 	/**
-	 * Copies all fields except propertySources
-	 * @param env
+	 * Copies all fields except propertySources.
+	 * @param env Spring Environment
 	 */
 	public Environment(Environment env) {
 		this(env.getName(), env.getProfiles(), env.getLabel(), env.getVersion(), env.getState());
 	}
 
 	@JsonCreator
-	public Environment(@JsonProperty("name") String name,
-			@JsonProperty("profiles") String[] profiles,
-			@JsonProperty("label") String label,
-			@JsonProperty("version") String version,
+	public Environment(@JsonProperty("name") String name, @JsonProperty("profiles") String[] profiles,
+			@JsonProperty("label") String label, @JsonProperty("version") String version,
 			@JsonProperty("state") String state) {
 		super();
 		this.name = name;
@@ -70,6 +73,32 @@ public class Environment {
 		this.label = label;
 		this.version = version;
 		this.state = state;
+	}
+
+	/**
+	 * Utility method for normalizing names and labels.
+	 * @param s String to normalize.
+	 * @return if s contains (_), replace with slash.
+	 */
+	public static String normalize(String s) {
+		if (s != null && s.contains(SLASH_PLACEHOLDER)) {
+			// "(_)" is uncommon in a git repo name, but "/" cannot be matched
+			// by Spring MVC
+			return s.replace(SLASH_PLACEHOLDER, "/");
+		}
+		return s;
+	}
+
+	/**
+	 * Utility method for denormalizing names and labels.
+	 * @param s String to denormalize.
+	 * @return if s contains slash, replace with (_).
+	 */
+	public static String denormalize(String s) {
+		if (s != null && s.contains("/")) {
+			return s.replace("/", SLASH_PLACEHOLDER);
+		}
+		return s;
 	}
 
 	public void add(PropertySource propertySource) {
@@ -85,11 +114,11 @@ public class Environment {
 	}
 
 	public List<PropertySource> getPropertySources() {
-		return propertySources;
+		return this.propertySources;
 	}
 
 	public String getName() {
-		return name;
+		return this.name;
 	}
 
 	public void setName(String name) {
@@ -97,7 +126,7 @@ public class Environment {
 	}
 
 	public String getLabel() {
-		return label;
+		return this.label;
 	}
 
 	public void setLabel(String label) {
@@ -105,7 +134,7 @@ public class Environment {
 	}
 
 	public String[] getProfiles() {
-		return profiles;
+		return this.profiles;
 	}
 
 	public void setProfiles(String[] profiles) {
@@ -113,7 +142,7 @@ public class Environment {
 	}
 
 	public String getVersion() {
-		return version;
+		return this.version;
 	}
 
 	public void setVersion(String version) {
@@ -121,7 +150,7 @@ public class Environment {
 	}
 
 	public String getState() {
-		return state;
+		return this.state;
 	}
 
 	public void setState(String state) {
@@ -130,10 +159,9 @@ public class Environment {
 
 	@Override
 	public String toString() {
-		return "Environment [name=" + name + ", profiles=" + Arrays.asList(profiles)
-				+ ", label=" + label + ", propertySources=" + propertySources
-				+ ", version=" + version
-				+ ", state=" + state + "]";
+		return "Environment [name=" + this.name + ", profiles=" + Arrays.asList(this.profiles) + ", label=" + this.label
+				+ ", propertySources=" + this.propertySources + ", version=" + this.version + ", state=" + this.state
+				+ "]";
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,13 +52,18 @@ import org.springframework.util.StringUtils;
  * @author Dave Syer
  *
  */
-@Configuration
-@EnableConfigurationProperties(KeyProperties.class)
-@Import({ SingleTextEncryptorConfiguration.class,
-		DefaultTextEncryptorConfiguration.class })
+@Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties
+@Import({ SingleTextEncryptorConfiguration.class, DefaultTextEncryptorConfiguration.class })
 public class EncryptionAutoConfiguration {
 
-	@Configuration
+	@Bean
+	@ConditionalOnMissingBean
+	public KeyProperties keyProperties() {
+		return new KeyProperties();
+	}
+
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnProperty(value = "spring.cloud.config.server.encrypt.enabled", matchIfMissing = true)
 	protected static class EncryptorConfiguration {
 
@@ -73,14 +78,14 @@ public class EncryptionAutoConfiguration {
 		public EnvironmentEncryptor environmentEncryptor() {
 			TextEncryptorLocator locator = this.locator;
 			if (locator == null) {
-				locator = new SingleTextEncryptorLocator(encryptor);
+				locator = new SingleTextEncryptorLocator(this.encryptor);
 			}
 			return new CipherEnvironmentEncryptor(locator);
 		}
 
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(RsaSecretEncryptor.class)
 	@ConditionalOnProperty(prefix = "encrypt.key-store", value = "location", matchIfMissing = false)
 	protected static class KeyStoreConfiguration {
@@ -96,8 +101,8 @@ public class EncryptionAutoConfiguration {
 		public TextEncryptorLocator textEncryptorLocator() {
 			KeyStore keyStore = this.key.getKeyStore();
 			KeyStoreTextEncryptorLocator locator = new KeyStoreTextEncryptorLocator(
-					new KeyStoreKeyFactory(keyStore.getLocation(),
-							keyStore.getPassword().toCharArray()),
+					new KeyStoreKeyFactory(keyStore.getLocation(), keyStore.getPassword().toCharArray(),
+							key.getKeyStore().getType()),
 					keyStore.getSecret(), keyStore.getAlias());
 			RsaAlgorithm algorithm = this.rsaProperties.getAlgorithm();
 			locator.setRsaAlgorithm(algorithm);
@@ -112,7 +117,7 @@ public class EncryptionAutoConfiguration {
 
 @ConditionalOnBean(TextEncryptor.class)
 @ConditionalOnMissingBean(TextEncryptorLocator.class)
-@Configuration
+@Configuration(proxyBeanMethods = false)
 class SingleTextEncryptorConfiguration {
 
 	@Autowired
@@ -120,13 +125,13 @@ class SingleTextEncryptorConfiguration {
 
 	@Bean
 	public SingleTextEncryptorLocator textEncryptorLocator() {
-		return new SingleTextEncryptorLocator(encryptor);
+		return new SingleTextEncryptorLocator(this.encryptor);
 	}
 
 }
 
 @ConditionalOnMissingBean(TextEncryptor.class)
-@Configuration
+@Configuration(proxyBeanMethods = false)
 class DefaultTextEncryptorConfiguration {
 
 	@Autowired
@@ -137,8 +142,8 @@ class DefaultTextEncryptorConfiguration {
 
 	@Bean
 	public TextEncryptor defaultTextEncryptor() {
-		if (locator != null) {
-			return new LocatorTextEncryptor(locator);
+		if (this.locator != null) {
+			return new LocatorTextEncryptor(this.locator);
 		}
 		if (StringUtils.hasText(this.key.getKey())) {
 			return new EncryptorFactory(this.key.getSalt()).create(this.key.getKey());

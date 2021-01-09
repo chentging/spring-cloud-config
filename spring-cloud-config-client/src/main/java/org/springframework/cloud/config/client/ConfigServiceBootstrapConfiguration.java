@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2017 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@
 package org.springframework.cloud.config.client;
 
 import org.aspectj.lang.annotation.Aspect;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -37,7 +38,7 @@ import org.springframework.retry.interceptor.RetryOperationsInterceptor;
  * @author Tristan Hanson
  *
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties
 public class ConfigServiceBootstrapConfiguration {
 
@@ -45,6 +46,7 @@ public class ConfigServiceBootstrapConfiguration {
 	private ConfigurableEnvironment environment;
 
 	@Bean
+	@ConditionalOnMissingBean
 	public ConfigClientProperties configClientProperties() {
 		ConfigClientProperties client = new ConfigClientProperties(this.environment);
 		return client;
@@ -52,16 +54,14 @@ public class ConfigServiceBootstrapConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(ConfigServicePropertySourceLocator.class)
-	@ConditionalOnProperty(value = "spring.cloud.config.enabled", matchIfMissing = true)
+	@ConditionalOnProperty(name = ConfigClientProperties.PREFIX + ".enabled", matchIfMissing = true)
 	public ConfigServicePropertySourceLocator configServicePropertySource(ConfigClientProperties properties) {
-		ConfigServicePropertySourceLocator locator = new ConfigServicePropertySourceLocator(
-				properties);
-		return locator;
+		return new ConfigServicePropertySourceLocator(properties);
 	}
 
-	@ConditionalOnProperty(value = "spring.cloud.config.fail-fast")
+	@ConditionalOnProperty(ConfigClientProperties.PREFIX + ".fail-fast")
 	@ConditionalOnClass({ Retryable.class, Aspect.class, AopAutoConfiguration.class })
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableRetry(proxyTargetClass = true)
 	@Import(AopAutoConfiguration.class)
 	@EnableConfigurationProperties(RetryProperties.class)
@@ -69,14 +69,12 @@ public class ConfigServiceBootstrapConfiguration {
 
 		@Bean
 		@ConditionalOnMissingBean(name = "configServerRetryInterceptor")
-		public RetryOperationsInterceptor configServerRetryInterceptor(
-				RetryProperties properties) {
-			return RetryInterceptorBuilder
-					.stateless()
-					.backOffOptions(properties.getInitialInterval(),
-							properties.getMultiplier(), properties.getMaxInterval())
-					.maxAttempts(properties.getMaxAttempts()).build();
+		public RetryOperationsInterceptor configServerRetryInterceptor(RetryProperties properties) {
+			return RetryInterceptorBuilder.stateless().backOffOptions(properties.getInitialInterval(),
+					properties.getMultiplier(), properties.getMaxInterval()).maxAttempts(properties.getMaxAttempts())
+					.build();
 		}
+
 	}
 
 }

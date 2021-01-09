@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,36 +42,43 @@ import org.springframework.util.StringUtils;
  * Base class for components that want to access a source control management system.
  *
  * @author Dave Syer
- *
  */
 public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 
 	protected Log logger = LogFactory.getLog(getClass());
+
 	/**
 	 * Base directory for local working copy of repository.
 	 */
 	private File basedir;
+
 	/**
 	 * URI of remote repository.
 	 */
 	private String uri;
+
 	private ConfigurableEnvironment environment;
+
 	/**
 	 * Username for authentication with remote repository.
 	 */
 	private String username;
+
 	/**
 	 * Password for authentication with remote repository.
 	 */
 	private String password;
+
 	/**
 	 * Passphrase for unlocking your ssh private key.
 	 */
 	private String passphrase;
+
 	/**
 	 * Reject incoming SSH host keys from remote servers not in the known host list.
 	 */
 	private boolean strictHostKeyChecking;
+
 	/**
 	 * Search paths to use within local working copy. By default searches only the root.
 	 */
@@ -84,11 +91,9 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 		this.basedir = createBaseDir();
 	}
 
-	public AbstractScmAccessor(ConfigurableEnvironment environment,
-			AbstractScmAccessorProperties properties) {
+	public AbstractScmAccessor(ConfigurableEnvironment environment, AbstractScmAccessorProperties properties) {
 		this.environment = environment;
-		this.basedir = properties.getBasedir() == null ? createBaseDir()
-				: properties.getBasedir();
+		this.setBasedir(properties.getBasedir() == null ? createBaseDir() : properties.getBasedir());
 		this.passphrase = properties.getPassphrase();
 		this.password = properties.getPassword();
 		this.searchPaths = properties.getSearchPaths();
@@ -112,8 +117,7 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 						FileSystemUtils.deleteRecursively(basedir);
 					}
 					catch (IOException e) {
-						AbstractScmAccessor.this.logger.warn(
-								"Failed to delete temporary directory on exit: " + e);
+						AbstractScmAccessor.this.logger.warn("Failed to delete temporary directory on exit: " + e);
 					}
 				}
 			});
@@ -132,6 +136,10 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 		this.environment = environment;
 	}
 
+	public String getUri() {
+		return this.uri;
+	}
+
 	public void setUri(String uri) {
 		while (uri.endsWith("/")) {
 			uri = uri.substring(0, uri.length() - 1);
@@ -144,24 +152,20 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 		this.uri = uri;
 	}
 
-	public String getUri() {
-		return this.uri;
+	public File getBasedir() {
+		return this.basedir;
 	}
 
 	public void setBasedir(File basedir) {
 		this.basedir = basedir.getAbsoluteFile();
 	}
 
-	public File getBasedir() {
-		return this.basedir;
+	public String[] getSearchPaths() {
+		return this.searchPaths;
 	}
 
 	public void setSearchPaths(String... searchPaths) {
 		this.searchPaths = searchPaths;
-	}
-
-	public String[] getSearchPaths() {
-		return this.searchPaths;
 	}
 
 	public String getUsername() {
@@ -181,7 +185,7 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 	}
 
 	public String getPassphrase() {
-		return passphrase;
+		return this.passphrase;
 	}
 
 	public void setPassphrase(String passphrase) {
@@ -189,7 +193,7 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 	}
 
 	public boolean isStrictHostKeyChecking() {
-		return strictHostKeyChecking;
+		return this.strictHostKeyChecking;
 	}
 
 	public void setStrictHostKeyChecking(boolean strictHostKeyChecking) {
@@ -202,15 +206,13 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 				return new UrlResource(StringUtils.cleanPath(this.uri)).getFile();
 			}
 			catch (Exception e) {
-				throw new IllegalStateException(
-						"Cannot convert uri to file: " + this.uri);
+				throw new IllegalStateException("Cannot convert uri to file: " + this.uri);
 			}
 		}
 		return this.basedir;
 	}
 
-	protected String[] getSearchLocations(File dir, String application, String profile,
-			String label) {
+	protected String[] getSearchLocations(File dir, String application, String profile, String label) {
 		String[] locations = this.searchPaths;
 		if (locations == null || locations.length == 0) {
 			locations = AbstractScmAccessorProperties.DEFAULT_LOCATIONS;
@@ -253,8 +255,7 @@ public abstract class AbstractScmAccessor implements ResourceLoaderAware {
 	private List<String> matchingDirectories(File dir, String value) {
 		List<String> output = new ArrayList<String>();
 		try {
-			PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(
-					this.resourceLoader);
+			PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(this.resourceLoader);
 			String path = new File(dir, value).toURI().toString();
 			for (Resource resource : resolver.getResources(path)) {
 				if (resource.getFile().isDirectory()) {

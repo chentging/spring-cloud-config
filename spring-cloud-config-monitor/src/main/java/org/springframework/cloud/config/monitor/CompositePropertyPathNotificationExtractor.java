@@ -1,11 +1,11 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,19 +27,17 @@ import org.springframework.core.annotation.Order;
 import org.springframework.util.MultiValueMap;
 
 /**
- * A {@link PropertyPathNotificationExtractor} that cycles through a set of (ordered) delegates,
- * looking for the first non-null outcome.
+ * A {@link PropertyPathNotificationExtractor} that cycles through a set of (ordered)
+ * delegates, looking for the first non-null outcome.
  *
  * @author Dave Syer
  *
  */
-public class CompositePropertyPathNotificationExtractor
-		implements PropertyPathNotificationExtractor {
+public class CompositePropertyPathNotificationExtractor implements PropertyPathNotificationExtractor {
 
 	private List<PropertyPathNotificationExtractor> extractors;
 
-	public CompositePropertyPathNotificationExtractor(
-			List<PropertyPathNotificationExtractor> extractors) {
+	public CompositePropertyPathNotificationExtractor(List<PropertyPathNotificationExtractor> extractors) {
 		this.extractors = new ArrayList<>();
 		if (extractors != null) {
 			this.extractors.addAll(extractors);
@@ -49,8 +47,7 @@ public class CompositePropertyPathNotificationExtractor
 	}
 
 	@Override
-	public PropertyPathNotification extract(MultiValueMap<String, String> headers,
-			Map<String, Object> request) {
+	public PropertyPathNotification extract(MultiValueMap<String, String> headers, Map<String, Object> request) {
 		for (PropertyPathNotificationExtractor extractor : this.extractors) {
 			PropertyPathNotification result = extractor.extract(headers, request);
 			if (result != null) {
@@ -61,12 +58,10 @@ public class CompositePropertyPathNotificationExtractor
 	}
 
 	@Order(Ordered.LOWEST_PRECEDENCE - 200)
-	private static class SimplePropertyPathNotificationExtractor
-			implements PropertyPathNotificationExtractor {
+	private static class SimplePropertyPathNotificationExtractor implements PropertyPathNotificationExtractor {
 
 		@Override
-		public PropertyPathNotification extract(MultiValueMap<String, String> headers,
-				Map<String, Object> request) {
+		public PropertyPathNotification extract(MultiValueMap<String, String> headers, Map<String, Object> request) {
 			Object object = request.get("path");
 			if (object instanceof String) {
 				return new PropertyPathNotification((String) object);

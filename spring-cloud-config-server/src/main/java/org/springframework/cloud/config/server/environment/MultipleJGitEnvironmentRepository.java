@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2018 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.config.server.environment;
 
 import java.io.File;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.cloud.config.environment.Environment;
@@ -51,17 +50,15 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 	/**
 	 * Map of repository identifier to location and other properties.
 	 */
-	private Map<String, PatternMatchingJGitEnvironmentRepository> repos;
+	private Map<String, PatternMatchingJGitEnvironmentRepository> repos = new LinkedHashMap<>();
 
 	private Map<String, JGitEnvironmentRepository> placeholders = new LinkedHashMap<>();
 
 	public MultipleJGitEnvironmentRepository(ConfigurableEnvironment environment,
-											 MultipleJGitEnvironmentProperties properties) {
+			MultipleJGitEnvironmentProperties properties) {
 		super(environment, properties);
-		this.repos = properties.getRepos().entrySet().stream()
-				.map(e -> new AbstractMap.SimpleEntry<>(e.getKey(),
-						new PatternMatchingJGitEnvironmentRepository(environment, e.getValue())))
-				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+		properties.getRepos().forEach((name, props) -> this.repos.put(name,
+				new PatternMatchingJGitEnvironmentRepository(environment, props)));
 	}
 
 	@Override
@@ -99,53 +96,45 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 			}
 			repo.afterPropertiesSet();
 		}
-		if (!getBasedir().exists() &&
-			!getBasedir().mkdirs()) {
-				throw new IllegalStateException(
-					"Basedir does not exist and can not be created: "	+ getBasedir());
+		if (!getBasedir().exists() && !getBasedir().mkdirs()) {
+			throw new IllegalStateException("Basedir does not exist and can not be created: " + getBasedir());
 		}
 		if (!getBasedir().getParentFile().canWrite()) {
 			throw new IllegalStateException(
-					"Cannot write parent of basedir (please configure a writable location): "
-							+ getBasedir());
+					"Cannot write parent of basedir (please configure a writable location): " + getBasedir());
 		}
-	}
-
-	public void setRepos(Map<String, PatternMatchingJGitEnvironmentRepository> repos) {
-		this.repos.putAll(repos);
 	}
 
 	public Map<String, PatternMatchingJGitEnvironmentRepository> getRepos() {
 		return this.repos;
 	}
 
+	public void setRepos(Map<String, PatternMatchingJGitEnvironmentRepository> repos) {
+		this.repos.putAll(repos);
+	}
+
 	@Override
 	public Locations getLocations(String application, String profile, String label) {
 		for (PatternMatchingJGitEnvironmentRepository repository : this.repos.values()) {
 			if (repository.matches(application, profile, label)) {
-				for (JGitEnvironmentRepository candidate : getRepositories(repository,
-						application, profile, label)) {
+				for (JGitEnvironmentRepository candidate : getRepositories(repository, application, profile, label)) {
 					try {
-						Environment source = candidate.findOne(application, profile,
-								label);
+						Environment source = candidate.findOne(application, profile, label, false);
 						if (source != null) {
 							return candidate.getLocations(application, profile, label);
 						}
 					}
 					catch (Exception e) {
-						if (logger.isDebugEnabled()) {
-							this.logger.debug("Cannot retrieve resource locations from "
-									+ candidate.getUri() + ", cause: ("
-									+ e.getClass().getSimpleName() + ") "
-									+ e.getMessage(), e);
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("Cannot retrieve resource locations from " + candidate.getUri()
+									+ ", cause: (" + e.getClass().getSimpleName() + ") " + e.getMessage(), e);
 						}
 						continue;
 					}
 				}
 			}
 		}
-		JGitEnvironmentRepository candidate = getRepository(this, application, profile,
-				label);
+		JGitEnvironmentRepository candidate = getRepository(this, application, profile, label);
 		if (candidate == this) {
 			return super.getLocations(application, profile, label);
 		}
@@ -153,48 +142,41 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 	}
 
 	@Override
-	public Environment findOne(String application, String profile, String label) {
+	public Environment findOne(String application, String profile, String label, boolean includeOrigin) {
 		for (PatternMatchingJGitEnvironmentRepository repository : this.repos.values()) {
 			if (repository.matches(application, profile, label)) {
-				for (JGitEnvironmentRepository candidate : getRepositories(repository,
-						application, profile, label)) {
+				for (JGitEnvironmentRepository candidate : getRepositories(repository, application, profile, label)) {
 					try {
 						if (label == null) {
 							label = candidate.getDefaultLabel();
 						}
-						Environment source = candidate.findOne(application, profile,
-								label);
+						Environment source = candidate.findOne(application, profile, label, includeOrigin);
 						if (source != null) {
 							return source;
 						}
 					}
 					catch (Exception e) {
-						if (logger.isDebugEnabled()) {
-							this.logger.debug(
-									"Cannot load configuration from " + candidate.getUri()
-											+ ", cause: (" + e.getClass().getSimpleName()
-											+ ") " + e.getMessage(),
-									e);
+						if (this.logger.isDebugEnabled()) {
+							this.logger.debug("Cannot load configuration from " + candidate.getUri() + ", cause: ("
+									+ e.getClass().getSimpleName() + ") " + e.getMessage(), e);
 						}
 						continue;
 					}
 				}
 			}
 		}
-		JGitEnvironmentRepository candidate = getRepository(this, application, profile,
-				label);
+		JGitEnvironmentRepository candidate = getRepository(this, application, profile, label);
 		if (label == null) {
 			label = candidate.getDefaultLabel();
 		}
 		if (candidate == this) {
-			return super.findOne(application, profile, label);
+			return super.findOne(application, profile, label, includeOrigin);
 		}
-		return candidate.findOne(application, profile, label);
+		return candidate.findOne(application, profile, label, includeOrigin);
 	}
 
-	private List<JGitEnvironmentRepository> getRepositories(
-			JGitEnvironmentRepository repository, String application, String profile,
-			String label) {
+	private List<JGitEnvironmentRepository> getRepositories(JGitEnvironmentRepository repository, String application,
+			String profile, String label) {
 		List<JGitEnvironmentRepository> list = new ArrayList<>();
 		String[] profiles = profile == null ? new String[] { null }
 				: StringUtils.commaDelimitedListToStringArray(profile);
@@ -204,8 +186,8 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 		return list;
 	}
 
-	private JGitEnvironmentRepository getRepository(JGitEnvironmentRepository repository,
-			String application, String profile, String label) {
+	JGitEnvironmentRepository getRepository(JGitEnvironmentRepository repository, String application, String profile,
+			String label) {
 		if (!repository.getUri().contains("{")) {
 			return repository;
 		}
@@ -231,25 +213,30 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 		return this.placeholders.get(key);
 	}
 
-	private JGitEnvironmentRepository getRepository(JGitEnvironmentRepository source,
-			String uri) {
-		JGitEnvironmentRepository repository = new JGitEnvironmentRepository(null,
-				new JGitEnvironmentProperties());
+	private JGitEnvironmentRepository getRepository(JGitEnvironmentRepository source, String uri) {
+		JGitEnvironmentRepository repository = new JGitEnvironmentRepository(null, new JGitEnvironmentProperties());
 		File basedir = repository.getBasedir();
 		BeanUtils.copyProperties(source, repository);
 		repository.setUri(uri);
-		repository.setBasedir(
-				new File(source.getBasedir().getParentFile(), basedir.getName()));
+		repository.setBasedir(new File(source.getBasedir(), basedir.getName()));
 		return repository;
 	}
 
-	public static class PatternMatchingJGitEnvironmentRepository
-			extends JGitEnvironmentRepository {
+	@Override
+	public void setOrder(int order) {
+		super.setOrder(order);
+	}
+
+	/**
+	 * A {@link JGitEnvironmentProperties} that matches patterns.
+	 */
+	public static class PatternMatchingJGitEnvironmentRepository extends JGitEnvironmentRepository {
 
 		/**
 		 * Pattern to match on application name and profiles.
 		 */
 		private String[] pattern = new String[0];
+
 		/**
 		 * Name of repository (same as map key by default).
 		 */
@@ -259,8 +246,7 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 			super(null, new JGitEnvironmentProperties());
 		}
 
-		public PatternMatchingJGitEnvironmentRepository(
-				ConfigurableEnvironment environment,
+		public PatternMatchingJGitEnvironmentRepository(ConfigurableEnvironment environment,
 				MultipleJGitEnvironmentProperties.PatternMatchingJGitEnvironmentProperties properties) {
 			super(environment, properties);
 			this.setPattern(properties.getPattern());
@@ -273,8 +259,7 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 			}
 			String[] profiles = StringUtils.commaDelimitedListToStringArray(profile);
 			for (int i = profiles.length; i-- > 0;) {
-				if (PatternMatchUtils.simpleMatch(this.pattern,
-						application + "/" + profiles[i])) {
+				if (PatternMatchUtils.simpleMatch(this.pattern, application + "/" + profiles[i])) {
 					return true;
 				}
 			}
@@ -282,15 +267,14 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 		}
 
 		@Override
-		public Environment findOne(String application, String profile, String label) {
+		public Environment findOne(String application, String profile, String label, boolean includeOrigin) {
 
 			if (this.pattern == null || this.pattern.length == 0) {
 				return null;
 			}
 
-			if (PatternMatchUtils.simpleMatch(this.pattern,
-					application + "/" + profile)) {
-				return super.findOne(application, profile, label);
+			if (PatternMatchUtils.simpleMatch(this.pattern, application + "/" + profile)) {
+				return super.findOne(application, profile, label, includeOrigin);
 			}
 
 			return null;
@@ -335,8 +319,4 @@ public class MultipleJGitEnvironmentRepository extends JGitEnvironmentRepository
 
 	}
 
-	@Override
-	public void setOrder(int order) {
-		super.setOrder(order);
-	}
 }

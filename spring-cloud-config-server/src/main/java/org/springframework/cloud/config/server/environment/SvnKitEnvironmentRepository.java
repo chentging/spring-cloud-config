@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2018 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.config.server.environment;
 
 import java.io.File;
@@ -53,6 +54,11 @@ public class SvnKitEnvironmentRepository extends AbstractScmEnvironmentRepositor
 	 */
 	private String defaultLabel;
 
+	public SvnKitEnvironmentRepository(ConfigurableEnvironment environment, SvnKitEnvironmentProperties properties) {
+		super(environment, properties);
+		this.defaultLabel = properties.getDefaultLabel();
+	}
+
 	public String getDefaultLabel() {
 		return this.defaultLabel;
 	}
@@ -61,22 +67,15 @@ public class SvnKitEnvironmentRepository extends AbstractScmEnvironmentRepositor
 		this.defaultLabel = defaultLabel;
 	}
 
-	public SvnKitEnvironmentRepository(ConfigurableEnvironment environment, SvnKitEnvironmentProperties properties) {
-		super(environment, properties);
-		this.defaultLabel = properties.getDefaultLabel();
-	}
-
 	@Override
-	public synchronized Locations getLocations(String application, String profile,
-			String label) {
+	public synchronized Locations getLocations(String application, String profile, String label) {
 		if (label == null) {
 			label = this.defaultLabel;
 		}
 		SvnOperationFactory svnOperationFactory = new SvnOperationFactory();
 		if (hasText(getUsername())) {
-			svnOperationFactory
-					.setAuthenticationManager(new DefaultSVNAuthenticationManager(null,
-							false, getUsername(), getPassword()));
+			svnOperationFactory.setAuthenticationManager(
+					new DefaultSVNAuthenticationManager(null, false, getUsername(), getPassword()));
 		}
 		try {
 			String version;
@@ -86,8 +85,7 @@ public class SvnKitEnvironmentRepository extends AbstractScmEnvironmentRepositor
 			else {
 				version = checkout(svnOperationFactory);
 			}
-			return new Locations(application, profile, label, version,
-					getPaths(application, profile, label));
+			return new Locations(application, profile, label, version, getPaths(application, profile, label));
 		}
 		catch (SVNException e) {
 			throw new IllegalStateException("Cannot checkout repository", e);
@@ -115,8 +113,7 @@ public class SvnKitEnvironmentRepository extends AbstractScmEnvironmentRepositor
 	}
 
 	private String checkout(SvnOperationFactory svnOperationFactory) throws SVNException {
-		logger.debug("Checking out " + getUri() + " to: "
-				+ getWorkingDirectory().getAbsolutePath());
+		logger.debug("Checking out " + getUri() + " to: " + getWorkingDirectory().getAbsolutePath());
 		final SvnCheckout checkout = svnOperationFactory.createCheckout();
 		checkout.setSource(SvnTarget.fromURL(SVNURL.parseURIEncoded(getUri())));
 		checkout.setSingleTarget(SvnTarget.fromFile(getWorkingDirectory()));
@@ -148,20 +145,21 @@ public class SvnKitEnvironmentRepository extends AbstractScmEnvironmentRepositor
 					+ getWorkingDirectory().getPath() + "), remote: " + this.getUri() + ")";
 			if (logger.isDebugEnabled()) {
 				logger.debug(message, e);
-			} else if (logger.isWarnEnabled()) {
+			}
+			else if (logger.isWarnEnabled()) {
 				logger.warn(message);
 			}
 		}
 
-		final SVNStatus status = SVNClientManager.newInstance().getStatusClient()
-				.doStatus(getWorkingDirectory(), false);
+		final SVNStatus status = SVNClientManager.newInstance().getStatusClient().doStatus(getWorkingDirectory(),
+				false);
 		return status != null ? status.getRevision().toString() : null;
 	}
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		Assert.state(getUri() != null,
-				"You need to configure a uri for the subversion repository (e.g. 'http://example.com/svn/')");
+				"You need to configure a uri for the subversion repository (e.g. 'https://example.com/svn/')");
 		resolveRelativeFileUri();
 	}
 
@@ -183,16 +181,16 @@ public class SvnKitEnvironmentRepository extends AbstractScmEnvironmentRepositor
 		// use label as path relative to repository root
 		// if it doesn't exists check branches and then tags folders
 		File svnPath = new File(workingDirectory, label);
-		if(!svnPath.exists()) {
+		if (!svnPath.exists()) {
 			svnPath = new File(workingDirectory, "branches" + File.separator + label);
-			if(!svnPath.exists()) {
+			if (!svnPath.exists()) {
 				svnPath = new File(workingDirectory, "tags" + File.separator + label);
-				if(!svnPath.exists()) {
+				if (!svnPath.exists()) {
 					throw new NoSuchLabelException("No label found for: " + label);
 				}
 			}
 		}
-		return svnPath; 
+		return svnPath;
 	}
 
 	@Override

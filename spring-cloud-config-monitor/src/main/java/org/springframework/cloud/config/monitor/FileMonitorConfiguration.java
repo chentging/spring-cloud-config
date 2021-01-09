@@ -1,11 +1,11 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,10 +31,12 @@ import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.config.server.environment.AbstractScmEnvironmentRepository;
 import org.springframework.cloud.config.server.environment.NativeEnvironmentRepository;
@@ -42,6 +44,7 @@ import org.springframework.context.ResourceLoaderAware;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.FileUrlResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpHeaders;
@@ -56,22 +59,23 @@ import org.springframework.util.PatternMatchUtils;
  * (i.e. a git repository with a "file:" URI) or to a native repository.
  *
  * @author Dave Syer
+ * @author Gilles Robert
  *
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableScheduling
 public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderAware {
 
 	private static final Log log = LogFactory.getLog(FileMonitorConfiguration.class);
 
 	@Autowired
-	PropertyPathEndpoint endpoint;
+	private PropertyPathEndpoint endpoint;
 
 	@Autowired(required = false)
-	AbstractScmEnvironmentRepository scmRepository;
+	private List<AbstractScmEnvironmentRepository> scmRepositories;
 
 	@Autowired(required = false)
-	NativeEnvironmentRepository nativeEnvironmentRepository;
+	private NativeEnvironmentRepository nativeEnvironmentRepository;
 
 	private boolean running;
 
@@ -98,7 +102,7 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 	}
 
 	/**
-	 * see {@link #getPhase()}
+	 * see {@link #getPhase()}.
 	 * @param phase the phase.
 	 */
 	public void setPhase(int phase) {
@@ -111,8 +115,8 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 	}
 
 	/**
-	 * @see #isRunning()
 	 * @param running true if running.
+	 * @see #isRunning()
 	 */
 	public void setRunning(boolean running) {
 		this.running = running;
@@ -124,8 +128,8 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 	}
 
 	/**
-	 * @see #isAutoStartup()
 	 * @param autoStartup true to auto start.
+	 * @see #isAutoStartup()
 	 */
 	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
@@ -161,8 +165,7 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 					this.watcher.close();
 				}
 				catch (IOException e) {
-					log.error("Failed to close watcher for " + this.directory.toString(),
-							e);
+					log.error("Failed to close watcher for " + this.directory.toString(), e);
 				}
 			}
 			this.running = false;
@@ -178,22 +181,27 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 	@Scheduled(fixedRateString = "${spring.cloud.config.server.monitor.fixedDelay:5000}")
 	public void poll() {
 		for (File file : filesFromEvents()) {
-			this.endpoint.notifyByPath(new HttpHeaders(), Collections
-					.<String, Object>singletonMap("path", file.getAbsolutePath()));
+			this.endpoint.notifyByPath(new HttpHeaders(),
+					Collections.<String, Object>singletonMap("path", file.getAbsolutePath()));
 		}
 	}
 
 	private Set<Path> getFileRepo() {
-		if (this.scmRepository != null) {
+		if (this.scmRepositories != null) {
+			String repositoryUri = null;
+			Set<Path> paths = new LinkedHashSet<>();
 			try {
-
-				Resource resource = this.resourceLoader.getResource(this.scmRepository.getUri());
-				if (resource instanceof FileSystemResource) {
-					return Collections.singleton(Paths.get(resource.getURI()));
+				for (AbstractScmEnvironmentRepository repository : scmRepositories) {
+					repositoryUri = repository.getUri();
+					Resource resource = this.resourceLoader.getResource(repositoryUri);
+					if (resource instanceof FileSystemResource || resource instanceof FileUrlResource) {
+						paths.add(Paths.get(resource.getURI()));
+					}
 				}
+				return paths;
 			}
 			catch (IOException e) {
-				log.error("Cannot resolve URI for path: " + this.scmRepository.getUri());
+				log.error("Cannot resolve URI for path: " + repositoryUri);
 			}
 		}
 		if (this.nativeEnvironmentRepository != null) {
@@ -225,14 +233,14 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 				if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE
 						|| event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
 					Path item = (Path) event.context();
-					File file = new File(((Path) key.watchable()).toAbsolutePath()
-							+ File.separator + item.getFileName());
+					File file = new File(
+							((Path) key.watchable()).toAbsolutePath() + File.separator + item.getFileName());
 					if (file.isDirectory()) {
 						files.addAll(walkDirectory(file.toPath()));
 					}
 					else {
-						if (!file.getPath().contains(".git") && !PatternMatchUtils
-								.simpleMatch(this.excludes, file.getName())) {
+						if (!file.getPath().contains(".git")
+								&& !PatternMatchUtils.simpleMatch(this.excludes, file.getName())) {
 							if (log.isDebugEnabled()) {
 								log.debug("Watch Event: " + event.kind() + ": " + file);
 							}
@@ -242,8 +250,7 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 				}
 				else if (event.kind() == StandardWatchEventKinds.OVERFLOW) {
 					if (log.isDebugEnabled()) {
-						log.debug("Watch Event: " + event.kind() + ": context: "
-								+ event.context());
+						log.debug("Watch Event: " + event.kind() + ": context: " + event.context());
 					}
 					if (event.context() != null && event.context() instanceof Path) {
 						files.addAll(walkDirectory((Path) event.context()));
@@ -256,8 +263,7 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 				}
 				else {
 					if (log.isDebugEnabled()) {
-						log.debug("Watch Event: " + event.kind() + ": context: "
-								+ event.context());
+						log.debug("Watch Event: " + event.kind() + ": context: " + event.context());
 					}
 				}
 			}
@@ -274,8 +280,7 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 			Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
 
 				@Override
-				public FileVisitResult preVisitDirectory(Path dir,
-						BasicFileAttributes attrs) throws IOException {
+				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
 					FileVisitResult fileVisitResult = super.preVisitDirectory(dir, attrs);
 					// No need to monitor the git metadata
 					if (dir.toFile().getPath().contains(".git")) {
@@ -286,8 +291,7 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 				}
 
 				@Override
-				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-						throws IOException {
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 					FileVisitResult fileVisitResult = super.visitFile(file, attrs);
 					walkedFiles.add(file.toFile());
 					return fileVisitResult;
@@ -306,11 +310,12 @@ public class FileMonitorConfiguration implements SmartLifecycle, ResourceLoaderA
 			log.debug("registering: " + dir + " for file creation events");
 		}
 		try {
-		dir.register(this.watcher, StandardWatchEventKinds.ENTRY_CREATE,
-				StandardWatchEventKinds.ENTRY_MODIFY);
-		} catch (IOException e) {
+			dir.register(this.watcher, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY);
+		}
+		catch (IOException e) {
 			throw e;
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			throw new IOException("Cannot register watcher for " + dir, e);
 		}
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2013-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,11 +17,13 @@
 package org.springframework.cloud.config.server.resource;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.springframework.cloud.config.server.environment.SearchPathLocator;
+import org.springframework.cloud.config.server.support.PathUtils;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -32,8 +34,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Dave Syer
  */
-public class GenericResourceRepository
-		implements ResourceRepository, ResourceLoaderAware {
+public class GenericResourceRepository implements ResourceRepository, ResourceLoaderAware {
 
 	private ResourceLoader resourceLoader;
 
@@ -49,24 +50,34 @@ public class GenericResourceRepository
 	}
 
 	@Override
-	public synchronized Resource findOne(String application, String profile, String label,
-			String path) {
-		String[] locations = this.service.getLocations(application, profile, label).getLocations();
-		try {
+	public synchronized Resource findOne(String application, String profile, String label, String path) {
+
+		if (StringUtils.hasText(path)) {
+			String[] locations = this.service.getLocations(application, profile, label).getLocations();
+			ArrayList<Resource> locationResources = new ArrayList<>();
 			for (int i = locations.length; i-- > 0;) {
 				String location = locations[i];
-				for (String local : getProfilePaths(profile, path)) {
-					Resource file = this.resourceLoader.getResource(location)
-							.createRelative(local);
-					if (file.exists() && file.isReadable()) {
-						return file;
+				if (!PathUtils.isInvalidEncodedLocation(location)) {
+					locationResources.add(this.resourceLoader.getResource(location));
+				}
+			}
+
+			try {
+				for (Resource location : locationResources) {
+					for (String local : getProfilePaths(profile, path)) {
+						if (!PathUtils.isInvalidPath(local) && !PathUtils.isInvalidEncodedPath(local)) {
+							Resource file = location.createRelative(local);
+							if (file.exists() && file.isReadable()
+									&& PathUtils.checkResource(file, location, locationResources)) {
+								return file;
+							}
+						}
 					}
 				}
 			}
-		}
-		catch (IOException e) {
-			throw new NoSuchResourceException(
-					"Error : " + path + ". (" + e.getMessage() + ")");
+			catch (IOException e) {
+				throw new NoSuchResourceException("Error : " + path + ". (" + e.getMessage() + ")");
+			}
 		}
 		throw new NoSuchResourceException("Not found: " + path);
 	}

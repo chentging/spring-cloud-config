@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,28 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.cloud.config.server.encryption;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+package org.springframework.cloud.config.server.encryption;
 
 import java.util.Map;
 
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.security.rsa.crypto.RsaSecretEncryptor;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Dave Syer
@@ -57,69 +54,56 @@ public class EncryptionControllerTests {
 
 	@Test(expected = InvalidCipherException.class)
 	public void shouldThrowExceptionOnDecryptInvalidData() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
-		controller.decrypt("foo", MediaType.TEXT_PLAIN);
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller.decrypt("foo", MediaType.TEXT_PLAIN);
 	}
 
 	@Test(expected = InvalidCipherException.class)
 	public void shouldThrowExceptionOnDecryptWrongKey() {
 		RsaSecretEncryptor encryptor = new RsaSecretEncryptor();
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
-		controller.decrypt(encryptor.encrypt("foo"), MediaType.TEXT_PLAIN);
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller.decrypt(encryptor.encrypt("foo"), MediaType.TEXT_PLAIN);
 	}
 
 	@Test
 	public void sunnyDayRsaKey() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
 		String cipher = this.controller.encrypt("foo", MediaType.TEXT_PLAIN);
-		assertEquals("foo", this.controller.decrypt(cipher, MediaType.TEXT_PLAIN));
+		assertThat(this.controller.decrypt(cipher, MediaType.TEXT_PLAIN)).isEqualTo("foo");
 	}
 
 	@Test
 	public void publicKey() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
 		String key = this.controller.getPublicKey();
-		assertTrue("Wrong key format: " + key, key.startsWith("ssh-rsa"));
+		assertThat(key.startsWith("ssh-rsa")).as("Wrong key format: " + key).isTrue();
 	}
 
 	@Test
 	public void appAndProfile() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
 		// Add space to input
-		String cipher = this.controller.encrypt("app", "default", "foo bar",
-				MediaType.TEXT_PLAIN);
-		String decrypt = this.controller.decrypt("app", "default", cipher,
-				MediaType.TEXT_PLAIN);
-		assertEquals("Wrong decrypted plaintext: " + decrypt, "foo bar", decrypt);
+		String cipher = this.controller.encrypt("app", "default", "foo bar", MediaType.TEXT_PLAIN);
+		String decrypt = this.controller.decrypt("app", "default", cipher, MediaType.TEXT_PLAIN);
+		assertThat(decrypt).as("Wrong decrypted plaintext: " + decrypt).isEqualTo("foo bar");
 	}
 
 	@Test
 	public void formDataIn() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
 		// Add space to input
-		String cipher = this.controller.encrypt("foo bar=",
-				MediaType.APPLICATION_FORM_URLENCODED);
-		String decrypt = this.controller.decrypt(cipher + "=",
-				MediaType.APPLICATION_FORM_URLENCODED);
-		assertEquals("Wrong decrypted plaintext: " + decrypt, "foo bar", decrypt);
+		String cipher = this.controller.encrypt("foo bar=", MediaType.APPLICATION_FORM_URLENCODED);
+		String decrypt = this.controller.decrypt(cipher + "=", MediaType.APPLICATION_FORM_URLENCODED);
+		assertThat(decrypt).as("Wrong decrypted plaintext: " + decrypt).isEqualTo("foo bar");
 	}
 
 	@Test
 	public void formDataInWithPrefix() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
 		// Add space to input
-		String cipher = this.controller.encrypt("{key:test}foo bar=",
-				MediaType.APPLICATION_FORM_URLENCODED);
-		String decrypt = this.controller.decrypt(cipher + "=",
-				MediaType.APPLICATION_FORM_URLENCODED);
-		assertEquals("Wrong decrypted plaintext: " + decrypt, "foo bar", decrypt);
+		String cipher = this.controller.encrypt("{key:test}foo bar=", MediaType.APPLICATION_FORM_URLENCODED);
+		String decrypt = this.controller.decrypt(cipher + "=", MediaType.APPLICATION_FORM_URLENCODED);
+		assertThat(decrypt).as("Wrong decrypted plaintext: " + decrypt).isEqualTo("foo bar");
 	}
 
 	@Test
@@ -132,21 +116,18 @@ public class EncryptionControllerTests {
 
 		ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
 		verify(encryptor, atLeastOnce()).encrypt(captor.capture());
-		assertThat("Prefix must be stripped prior to encrypt", captor.getValue(), not(containsString("{key:test}")));
+		assertThat(captor.getValue()).doesNotContain("{key:test}").as("Prefix must be stripped prior to encrypt");
 	}
 
 	@Test
 	public void encryptDecyptTextWithCurlyBrace() {
-		this.controller = new EncryptionController(
-				new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
+		this.controller = new EncryptionController(new SingleTextEncryptorLocator(new RsaSecretEncryptor()));
 
 		String plain = "textwith}brace";
 
-		String cipher = this.controller.encrypt(plain,
-				MediaType.APPLICATION_FORM_URLENCODED);
-		String decrypt = this.controller.decrypt(cipher,
-				MediaType.APPLICATION_FORM_URLENCODED);
-		assertEquals(plain, decrypt);
+		String cipher = this.controller.encrypt(plain, MediaType.APPLICATION_FORM_URLENCODED);
+		String decrypt = this.controller.decrypt(cipher, MediaType.APPLICATION_FORM_URLENCODED);
+		assertThat(decrypt).isEqualTo(plain);
 	}
 
 	@Test
@@ -162,12 +143,10 @@ public class EncryptionControllerTests {
 		};
 		this.controller = new EncryptionController(locator);
 		// Add space to input
-		String cipher = this.controller.encrypt("app", "default", "foo bar",
-				MediaType.TEXT_PLAIN);
-		assertFalse("Wrong cipher: " + cipher, cipher.contains("{name:app}"));
-		String decrypt = this.controller.decrypt("app", "default", cipher,
-				MediaType.TEXT_PLAIN);
-		assertEquals("Wrong decrypted plaintext: " + decrypt, "foo bar", decrypt);
+		String cipher = this.controller.encrypt("app", "default", "foo bar", MediaType.TEXT_PLAIN);
+		assertThat(cipher.contains("{name:app}")).as("Wrong cipher: " + cipher).isFalse();
+		String decrypt = this.controller.decrypt("app", "default", cipher, MediaType.TEXT_PLAIN);
+		assertThat(decrypt).as("Wrong decrypted plaintext: " + decrypt).isEqualTo("foo bar");
 	}
 
 }

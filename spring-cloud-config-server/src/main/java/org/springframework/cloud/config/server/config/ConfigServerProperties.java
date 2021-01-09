@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.config.server.config;
 
 import java.util.LinkedHashMap;
@@ -56,8 +57,9 @@ public class ConfigServerProperties {
 	 * should be returned in "native" form.
 	 */
 	private boolean stripDocumentFromYaml = true;
+
 	/**
-	 * Flag to indicate that If HTTP 404 needs to be sent if Application is not Found
+	 * Flag to indicate that If HTTP 404 needs to be sent if Application is not Found.
 	 */
 	private boolean acceptEmpty = true;
 
@@ -72,7 +74,19 @@ public class ConfigServerProperties {
 	private String defaultProfile = "default";
 
 	/**
-	 * Decryption configuration for when server handles encrypted properties before sending them to clients.
+	 * Flag indicating that if there are any errors reading properties from a subordinate
+	 * environment repository in a composite environment repository, then the entire
+	 * composite read should fail. Useful when set to false when a Vault repository is in
+	 * the composite to allow clients to still read properties from other repositories
+	 * without providing a valid Vault token.
+	 *
+	 * Defaults to true, resulting in a failure on any error.
+	 */
+	private boolean failOnCompositeError = true;
+
+	/**
+	 * Decryption configuration for when server handles encrypted properties before
+	 * sending them to clients.
 	 */
 	private Encrypt encrypt = new Encrypt();
 
@@ -119,7 +133,7 @@ public class ConfigServerProperties {
 	public void setStripDocumentFromYaml(boolean stripDocumentFromYaml) {
 		this.stripDocumentFromYaml = stripDocumentFromYaml;
 	}
-	
+
 	public boolean isAcceptEmpty() {
 		return this.acceptEmpty;
 	}
@@ -127,6 +141,7 @@ public class ConfigServerProperties {
 	public void setAcceptEmpty(boolean acceptEmpty) {
 		this.acceptEmpty = acceptEmpty;
 	}
+
 	public String getDefaultApplicationName() {
 		return this.defaultApplicationName;
 	}
@@ -143,11 +158,29 @@ public class ConfigServerProperties {
 		this.defaultProfile = defaultProfile;
 	}
 
+	public boolean isFailOnCompositeError() {
+		return failOnCompositeError;
+	}
+
+	public void setFailOnCompositeError(boolean failOnCompositeError) {
+		this.failOnCompositeError = failOnCompositeError;
+	}
+
+	/**
+	 * Encryption properties.
+	 */
 	public static class Encrypt {
+
 		/**
 		 * Enable decryption of environment properties before sending to client.
 		 */
 		private boolean enabled = true;
+
+		/**
+		 * Enable decryption of environment properties served by plain text endpoint
+		 * {@link org.springframework.cloud.config.server.resource.ResourceController}.
+		 */
+		private boolean plainTextEncrypt = false;
 
 		public boolean isEnabled() {
 			return this.enabled;
@@ -156,5 +189,15 @@ public class ConfigServerProperties {
 		public void setEnabled(boolean enabled) {
 			this.enabled = enabled;
 		}
+
+		public boolean isPlainTextEncrypt() {
+			return plainTextEncrypt;
+		}
+
+		public void setPlainTextEncrypt(boolean plainTextEncrypt) {
+			this.plainTextEncrypt = plainTextEncrypt;
+		}
+
 	}
+
 }

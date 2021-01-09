@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2018 the original author or authors.
+ * Copyright 2013-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@ import org.springframework.cloud.config.server.encryption.EncryptionControllerTe
 import org.springframework.cloud.config.server.encryption.EncryptionIntegrationTests;
 import org.springframework.cloud.config.server.encryption.EnvironmentPrefixHelperTests;
 import org.springframework.cloud.config.server.encryption.KeyStoreTextEncryptorLocatorTests;
+import org.springframework.cloud.config.server.environment.AwsS3EnvironmentRepositoryTests;
 import org.springframework.cloud.config.server.environment.CompositeEnvironmentRepositoryTests;
 import org.springframework.cloud.config.server.environment.EnvironmentControllerIntegrationTests;
 import org.springframework.cloud.config.server.environment.EnvironmentControllerTests;
@@ -62,53 +63,30 @@ import org.springframework.cloud.config.server.ssh.SshUriPropertyProcessorTest;
  * @author Dave Syer
  */
 @RunWith(Suite.class)
-@SuiteClasses({ NativeConfigServerIntegrationTests.class,
-		GenericResourceRepositoryTests.class,
-		ResourceControllerTests.class,
-		ResourceControllerIntegrationTests.class,
-		ConfigClientOnIntegrationTests.class,
-		ConfigServerApplicationTests.class,
-		VanillaConfigServerIntegrationTests.class,
-		EnvironmentControllerIntegrationTests.class,
-		MultipleJGitEnvironmentRepositoryIntegrationTests.class,
-		EnvironmentEncryptorEnvironmentRepositoryTests.class,
-		EnvironmentControllerTests.class,
+@SuiteClasses({ NativeConfigServerIntegrationTests.class, GenericResourceRepositoryTests.class,
+		ResourceControllerTests.class, ResourceControllerIntegrationTests.class, ConfigClientOnIntegrationTests.class,
+		ConfigServerApplicationTests.class, VanillaConfigServerIntegrationTests.class,
+		EnvironmentControllerIntegrationTests.class, MultipleJGitEnvironmentRepositoryIntegrationTests.class,
+		EnvironmentEncryptorEnvironmentRepositoryTests.class, EnvironmentControllerTests.class,
 		SVNKitEnvironmentRepositoryIntegrationTests.class,
-		MultipleJGitEnvironmentApplicationPlaceholderRepositoryTests.class,
-		JdbcEnvironmentRepositoryTests.class,
-		CompositeEnvironmentRepositoryTests.class,
-		JGitEnvironmentRepositoryConcurrencyTests.class,
-		NativeEnvironmentRepositoryTests.class,
-		JGitEnvironmentRepositoryTests.class,
-		SVNKitEnvironmentRepositoryTests.class,
-		VaultEnvironmentRepositoryTests.class,
-		MultipleJGitEnvironmentRepositoryTests.class,
-		JGitEnvironmentRepositoryIntegrationTests.class,
+		MultipleJGitEnvironmentApplicationPlaceholderRepositoryTests.class, JdbcEnvironmentRepositoryTests.class,
+		CompositeEnvironmentRepositoryTests.class, JGitEnvironmentRepositoryConcurrencyTests.class,
+		NativeEnvironmentRepositoryTests.class, JGitEnvironmentRepositoryTests.class,
+		SVNKitEnvironmentRepositoryTests.class, VaultEnvironmentRepositoryTests.class,
+		MultipleJGitEnvironmentRepositoryTests.class, JGitEnvironmentRepositoryIntegrationTests.class,
 		MultipleJGitEnvironmentProfilePlaceholderRepositoryTests.class,
-		MultipleJGitEnvironmentLabelPlaceholderRepositoryTests.class,
-		GitCredentialsProviderFactoryTests.class,
-		AwsCodeCommitCredentialsProviderTests.class,
-		TransportConfigurationIntegrationTests.FileBasedCallbackTest.class,
-		ConfigClientOffIntegrationTests.class,
-		TransportConfigurationIntegrationTests.PropertyBasedCallbackTest.class,
-		EncryptionControllerMultiTextEncryptorTests.class,
-		CipherEnvironmentEncryptorTests.class,
+		MultipleJGitEnvironmentLabelPlaceholderRepositoryTests.class, GitCredentialsProviderFactoryTests.class,
+		AwsCodeCommitCredentialsProviderTests.class, TransportConfigurationIntegrationTests.FileBasedCallbackTest.class,
+		ConfigClientOffIntegrationTests.class, TransportConfigurationIntegrationTests.PropertyBasedCallbackTest.class,
+		EncryptionControllerMultiTextEncryptorTests.class, CipherEnvironmentEncryptorTests.class,
 		EncryptionIntegrationTests.BootstrapConfigSymmetricEncryptionIntegrationTests.class,
-		EncryptionControllerTests.class,
-		EncryptionIntegrationTests.ConfigSymmetricEncryptionIntegrationTests.class,
-		EncryptionIntegrationTests.KeystoreConfigurationIntegrationTests.class,
-		KeyStoreTextEncryptorLocatorTests.class,
-		EnvironmentPrefixHelperTests.class,
-		SshUriPropertyProcessorTest.class,
-		PropertyBasedSshSessionFactoryTest.class,
-		SshPropertyValidatorTest.class,
-		CompositeIntegrationTests.class,
-		SubversionConfigServerIntegrationTests.class,
-		ConfigServerHealthIndicatorTests.class,
-		CustomCompositeEnvironmentRepositoryTests.class,
-		CustomEnvironmentRepositoryTests.class,
-		BootstrapConfigServerIntegrationTests.class,
-})
+		EncryptionControllerTests.class, EncryptionIntegrationTests.ConfigSymmetricEncryptionIntegrationTests.class,
+		EncryptionIntegrationTests.KeystoreConfigurationIntegrationTests.class, KeyStoreTextEncryptorLocatorTests.class,
+		EnvironmentPrefixHelperTests.class, SshUriPropertyProcessorTest.class, PropertyBasedSshSessionFactoryTest.class,
+		SshPropertyValidatorTest.class, CompositeIntegrationTests.class, SubversionConfigServerIntegrationTests.class,
+		ConfigServerHealthIndicatorTests.class, CustomCompositeEnvironmentRepositoryTests.class,
+		CustomEnvironmentRepositoryTests.class, BootstrapConfigServerIntegrationTests.class,
+		AwsS3EnvironmentRepositoryTests.class })
 @Ignore
 public class AdhocTestSuite {
 
